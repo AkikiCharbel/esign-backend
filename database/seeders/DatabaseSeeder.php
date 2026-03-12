@@ -2,24 +2,33 @@
 
 namespace Database\Seeders;
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(RoleSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $tenant = Tenant::query()->create([
+            'name' => 'tenant-1',
+            'slug' => 'tenant-1',
         ]);
+
+        $user = User::query()->create([
+            'name' => 'Admin',
+            'email' => 'admin@tenant-1.com',
+            'password' => bcrypt('password'),
+            'tenant_id' => $tenant->id,
+        ]);
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
+        $user->assignRole('admin');
     }
 }
