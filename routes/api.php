@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DocumentSignerController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
@@ -24,4 +26,11 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
     Route::put('/templates/{template}/fields/sync', [TemplateFieldController::class, 'sync'])->name('templates.fields.sync');
     Route::patch('/templates/{template}/fields/{field}', [TemplateFieldController::class, 'update'])->scopeBindings()->name('template-fields.update');
     Route::delete('/templates/{template}/fields/{field}', [TemplateFieldController::class, 'destroy'])->scopeBindings()->name('template-fields.destroy');
+
+    // Documents
+    Route::apiResource('documents', DocumentController::class)->only(['index', 'store', 'show', 'destroy']);
+
+    // Document Signers
+    Route::post('/documents/{document}/signers', [DocumentSignerController::class, 'store'])->name('documents.signers.store');
+    Route::delete('/documents/{document}/signers/{signer}', [DocumentSignerController::class, 'destroy'])->scopeBindings()->name('document-signers.destroy');
 });

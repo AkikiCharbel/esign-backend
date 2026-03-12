@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Document;
 use App\Models\DocumentSigner;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -10,15 +11,15 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class DocumentSignerFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            //
+            'document_id' => fn () => Document::factory(),
+            'name' => fake()->name(),
+            'email' => fake()->unique()->safeEmail(),
+            'role' => 'signer',
+            'sign_order' => fake()->numberBetween(1, 10),
+            'status' => 'pending',
         ];
     }
 }

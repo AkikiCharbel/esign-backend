@@ -44,31 +44,31 @@ All 9 migrations created and verified (24 tables total including Spatie + MediaL
 
 ### TASK 1.3 — Auth + Roles + Seeder
 **Owner: Claude Code**
-- [ ] CORS configured for http://localhost:5173 (token mode, supports_credentials=false)
-- [ ] AuthController: login (returns token), logout, me
-- [ ] API routes in routes/api.php under auth:sanctum group
-- [ ] RoleSeeder: admin, staff, viewer roles
-- [ ] DatabaseSeeder: tenant-1 + admin user with admin role scoped to tenant
-- [ ] `php artisan db:seed` runs clean
-- [ ] POST /api/auth/login returns token ✓
+- [x] CORS configured for http://localhost:5173 (token mode, supports_credentials=false)
+- [x] AuthController: login (returns token), logout, me
+- [x] API routes in routes/api.php under auth:sanctum group
+- [x] RoleSeeder: admin, staff, viewer roles
+- [x] DatabaseSeeder: tenant-1 + admin user with admin role scoped to tenant
+- [x] `php artisan db:seed` runs clean
+- [x] POST /api/auth/login returns token ✓
 
 Notes:
-_
+Completed in task 1.4 commit. CORS set for localhost:5173 with supports_credentials=false. AuthController handles login/logout/me. RoleSeeder creates admin, staff, viewer roles. DatabaseSeeder creates tenant + admin user with role.
 
 ---
 
 ### TASK 1.4 — Template API
 **Owner: Claude Code**
-- [ ] TemplateController: index, store, show, update, destroy
-- [ ] TemplatePdfController: store (upload PDF → MediaLibrary, extract page_count via FPDI)
-- [ ] TemplateFieldController: store, update, destroy, bulkSync
-- [ ] API Resources for Template, TemplateField
-- [ ] Form Requests for all actions
-- [ ] Feature tests for TemplateController
-- [ ] `php artisan test --compact` passes
+- [x] TemplateController: index, store, show, update, destroy
+- [x] TemplatePdfController: store (upload PDF → MediaLibrary, extract page_count via FPDI)
+- [x] TemplateFieldController: store, update, destroy, bulkSync
+- [x] API Resources for Template, TemplateField
+- [x] Form Requests for all actions
+- [x] Feature tests for TemplateController
+- [x] `php artisan test --compact` passes
 
 Notes:
-_
+Completed. Commit 3cc2c31. All template CRUD, PDF upload with page_count extraction, field sync endpoint. Feature tests passing.
 
 ---
 
@@ -76,15 +76,15 @@ _
 
 ### TASK 2.1 — Document API
 **Owner: Claude Code**
-- [ ] DocumentController: index, store, show, destroy
-- [ ] DocumentSignerController: store, destroy
-- [ ] API Resources for Document, DocumentSigner
-- [ ] Form Requests for all actions
-- [ ] Feature tests
-- [ ] Tests pass
+- [x] DocumentController: index, store, show, destroy
+- [x] DocumentSignerController: store, destroy
+- [x] API Resources for Document, DocumentSigner
+- [x] Form Requests for all actions
+- [x] Feature tests
+- [x] Tests pass
 
 Notes:
-_
+Completed. Code review findings addressed: template_id scoped to tenant via Rule::exists, signer delete route nested under documents/{document}/signers/{signer} with scopeBindings(), cross-tenant isolation tests added for both template_id and signer add, factory sign_order uses numberBetween(1,10). Role on DocumentSigner intentionally left as free-form string to match signer_role on TemplateField.
 
 ---
 
