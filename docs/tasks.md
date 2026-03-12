@@ -8,37 +8,37 @@
 
 ### TASK 1.1 — Project Setup
 **Owner: Developer (manual)**
-- [ ] `composer create-project laravel/laravel docusign-clone`
-- [ ] Install all composer packages (sanctum, spatie/permission, spatie/medialibrary, fpdi, tcpdf)
-- [ ] Publish Spatie Permission config, set `teams = true`, `team_foreign_key = tenant_id`
-- [ ] Publish MediaLibrary migrations
-- [ ] `git init && git commit -m "chore: install packages"`
+- [x] `composer create-project laravel/laravel docusign-clone`
+- [x] Install all composer packages (sanctum, spatie/permission, spatie/medialibrary, fpdi, tcpdf)
+- [x] Publish Spatie Permission config, set `teams = true`, `team_foreign_key = tenant_id`
+- [x] Publish MediaLibrary migrations
+- [x] `git init && git commit -m "chore: install packages"`
 
 Notes:
-_
+Completed. All packages installed, Spatie permission config published with teams=true and team_foreign_key=tenant_id.
 
 ---
 
 ### TASK 1.2 — Database Migrations + Models
 **Owner: Claude Code**
-- [ ] tenants migration
-- [ ] users migration (add tenant_id)
-- [ ] templates migration (no pdf_path — MediaLibrary handles files)
-- [ ] template_fields migration
-- [ ] documents migration
-- [ ] document_signers migration
-- [ ] submissions migration (no signed_pdf_path — MediaLibrary handles files)
-- [ ] submission_field_values migration
-- [ ] audit_logs migration
-- [ ] TenantAwareModel base class with global scope
-- [ ] All models created with correct relationships
-- [ ] Template + Submission implement HasMedia + InteractsWithMedia
-- [ ] User model has HasRoles (Spatie)
-- [ ] SetTenantContext middleware created
-- [ ] `php artisan migrate` runs clean
+- [x] tenants migration
+- [x] users migration (add tenant_id)
+- [x] templates migration (no pdf_path — MediaLibrary handles files)
+- [x] template_fields migration
+- [x] documents migration
+- [x] document_signers migration
+- [x] submissions migration (no signed_pdf_path — MediaLibrary handles files)
+- [x] submission_field_values migration
+- [x] audit_logs migration
+- [x] TenantAwareModel base class with global scope
+- [x] All models created with correct relationships
+- [x] Template + Submission implement HasMedia + InteractsWithMedia
+- [x] User model has HasRoles (Spatie)
+- [x] SetTenantContext middleware created
+- [x] `php artisan migrate` runs clean
 
 Notes:
-_
+All 9 migrations created and verified (24 tables total including Spatie + MediaLibrary + Sanctum). Models have full generic PHPDoc annotations — PHPStan passes with 0 errors. Stub factories created for all models. SetTenantContext middleware registered in bootstrap/app.php under api group. Global currentTenant() helper in app/helpers.php autoloaded via composer.json. Review fixes: users.tenant_id has onDelete cascade, templates.description uses text(), submission_field_values.value is nullable.
 
 ---
 

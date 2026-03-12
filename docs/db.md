@@ -1,0 +1,161 @@
+# Database Schema Diagram
+
+```mermaid
+erDiagram
+    tenants {
+        int id PK
+        string name
+        string slug
+        json settings
+        timestamp created_at
+    }
+
+    users {
+        int id PK
+        int tenant_id FK
+        string name
+        string email
+        string password
+        timestamp created_at
+    }
+
+    templates {
+        int id PK
+        int tenant_id FK
+        int created_by FK
+        string name
+        string description
+        int page_count
+        enum status "draft|active"
+        timestamp created_at
+    }
+
+    template_fields {
+        int id PK
+        int template_id FK
+        int page
+        enum type "signature|initials|text|date|checkbox|radio|dropdown"
+        string label
+        bool required
+        float x
+        float y
+        float width
+        float height
+        int font_size
+        bool multiline
+        json options
+        string signer_role
+        int order
+    }
+
+    documents {
+        int id PK
+        int tenant_id FK
+        int template_id FK
+        int created_by FK
+        string name
+        text custom_message
+        string reply_to_email
+        string reply_to_name
+        bool has_attachments
+        text attachment_instructions
+        timestamp created_at
+    }
+
+    document_signers {
+        int id PK
+        int document_id FK
+        string name
+        string email
+        string role
+        int sign_order
+        enum status "pending|signed"
+        timestamp created_at
+    }
+
+    submissions {
+        int id PK
+        int tenant_id FK
+        int document_id FK
+        string recipient_name
+        string recipient_email
+        enum status "draft|sent|pending|questions|signed"
+        string token UK
+        string ip_address
+        string user_agent
+        timestamp sent_at
+        timestamp viewed_at
+        timestamp signed_at
+        timestamp expires_at
+        timestamp created_at
+    }
+
+    submission_field_values {
+        int id PK
+        int submission_id FK
+        int template_field_id FK
+        text value
+        timestamp created_at
+    }
+
+    audit_logs {
+        int id PK
+        int submission_id FK
+        string event
+        json metadata
+        string ip
+        timestamp created_at
+    }
+
+    media {
+        int id PK
+        string model_type
+        int model_id
+        string collection_name
+        string file_name
+        string disk
+        int size
+        timestamp created_at
+    }
+
+    tenants ||--o{ users : "has"
+    tenants ||--o{ templates : "owns"
+    tenants ||--o{ documents : "owns"
+    tenants ||--o{ submissions : "owns"
+
+    users ||--o{ templates : "created_by"
+    users ||--o{ documents : "created_by"
+
+    templates ||--o{ template_fields : "has"
+    templates ||--o{ documents : "used_in"
+    templates ||--o{ media : "pdf (morphOne)"
+
+    documents ||--o{ document_signers : "has"
+    documents ||--o{ submissions : "generates"
+
+    submissions ||--o{ submission_field_values : "has"
+    submissions ||--o{ audit_logs : "logs"
+    submissions ||--o{ media : "files (morphMany)"
+
+    template_fields ||--o{ submission_field_values : "answered_by"
+```
+
+---
+
+## Media Collections
+
+| Model | Collection | Type | Contents |
+|-------|-----------|------|----------|
+| `Template` | `template-pdf` | singleFile | Original uploaded PDF |
+| `Submission` | `signed-pdf` | singleFile | Flattened signed PDF |
+| `Submission` | `attachments` | multiple | Customer uploaded files |
+| `Submission` | `signatures` | multiple | Signature PNGs (archived) |
+
+---
+
+## Key Notes
+
+- `x`, `y`, `width`, `height` on `template_fields` are stored as **percentages (0–100)** of the page dimensions — never pixels
+- `token` on `submissions` is the sole auth mechanism for public routes — unique UUID generated on creation
+- `media` table is managed entirely by **Spatie MediaLibrary** — never write to it directly
+- All tenant-scoped tables have `tenant_id` — enforced via `TenantAwareModel` global scope
