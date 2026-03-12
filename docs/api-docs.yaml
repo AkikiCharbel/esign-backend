@@ -1,0 +1,782 @@
+openapi: 3.0.3
+info:
+  title: DocuSign Clone API
+  version: 1.0.0
+  description: E-signature platform API — Laravel 12 + Sanctum token auth
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        tenant_id: { type: integer }
+        roles: { type: array, items: { type: string } }
+
+    Template:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        page_count: { type: integer }
+        status: { type: string, enum: [draft, active] }
+        pdf_url: { type: string, nullable: true }
+        fields: { type: array, items: { $ref: '#/components/schemas/TemplateField' } }
+        created_at: { type: string, format: date-time }
+
+    TemplateField:
+      type: object
+      properties:
+        id: { type: integer }
+        template_id: { type: integer }
+        page: { type: integer }
+        type:
+          type: string
+          enum: [signature, initials, text, date, checkbox, radio, dropdown]
+        label: { type: string }
+        required: { type: boolean }
+        x: { type: number, description: "Percentage 0-100 of page width" }
+        y: { type: number, description: "Percentage 0-100 of page height" }
+        width: { type: number }
+        height: { type: number }
+        font_size: { type: integer }
+        multiline: { type: boolean }
+        options: { type: array, items: { type: string }, nullable: true }
+        signer_role: { type: string, nullable: true }
+        order: { type: integer }
+
+    Document:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        template_id: { type: integer }
+        template: { $ref: '#/components/schemas/Template' }
+        custom_message: { type: string, nullable: true }
+        reply_to_email: { type: string, nullable: true }
+        reply_to_name: { type: string, nullable: true }
+        has_attachments: { type: boolean }
+        attachment_instructions: { type: string, nullable: true }
+        signers: { type: array, items: { $ref: '#/components/schemas/DocumentSigner' } }
+        created_at: { type: string, format: date-time }
+
+    DocumentSigner:
+      type: object
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string }
+        sign_order: { type: integer }
+        status: { type: string, enum: [pending, signed] }
+
+    Submission:
+      type: object
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        recipient_name: { type: string }
+        recipient_email: { type: string }
+        status:
+          type: string
+          enum: [draft, sent, pending, questions, signed]
+        token: { type: string }
+        signed_pdf_url: { type: string, nullable: true }
+        sent_at: { type: string, format: date-time, nullable: true }
+        viewed_at: { type: string, format: date-time, nullable: true }
+        signed_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        field_values: { type: array, items: { $ref: '#/components/schemas/SubmissionFieldValue' } }
+        audit_logs: { type: array, items: { $ref: '#/components/schemas/AuditLog' } }
+
+    SubmissionFieldValue:
+      type: object
+      properties:
+        id: { type: integer }
+        submission_id: { type: integer }
+        template_field_id: { type: integer }
+        field: { $ref: '#/components/schemas/TemplateField' }
+        value: { type: string }
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        submission_id: { type: integer }
+        event: { type: string, enum: [sent, viewed, signed] }
+        ip: { type: string, nullable: true }
+        metadata: { type: object, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Media:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        mime_type: { type: string }
+        size: { type: integer }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+
+    Paginated:
+      type: object
+      properties:
+        data: { type: array }
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+
+paths:
+
+  # ─── AUTH ───────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive a Bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '422':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current token
+      responses:
+        '204': { description: Logged out }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  # ─── TEMPLATES ──────────────────────────────────────────
+  /templates:
+    get:
+      tags: [Templates]
+      summary: List templates (paginated)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, active] }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Template' }
+    post:
+      tags: [Templates]
+      summary: Create a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+
+  /templates/{id}:
+    get:
+      tags: [Templates]
+      summary: Get template with fields
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+    patch:
+      tags: [Templates]
+      summary: Update template metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                status: { type: string, enum: [draft, active] }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Template' }
+    delete:
+      tags: [Templates]
+      summary: Delete template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+
+  /templates/{id}/pdf:
+    post:
+      tags: [Templates]
+      summary: Upload PDF for a template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [pdf]
+              properties:
+                pdf:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdf_url: { type: string }
+                  page_count: { type: integer }
+
+  /templates/{id}/fields:
+    post:
+      tags: [Templates]
+      summary: Add a field to a template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TemplateField' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateField' }
+
+  /templates/{id}/fields/sync:
+    put:
+      tags: [Templates]
+      summary: Replace all fields for a template (bulk save from builder)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fields:
+                  type: array
+                  items: { $ref: '#/components/schemas/TemplateField' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TemplateField' }
+
+  /template-fields/{id}:
+    patch:
+      tags: [Templates]
+      summary: Update a field
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TemplateField' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TemplateField' }
+    delete:
+      tags: [Templates]
+      summary: Delete a field
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+
+  # ─── DOCUMENTS ──────────────────────────────────────────
+  /documents:
+    get:
+      tags: [Documents]
+      summary: List documents
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Document' }
+    post:
+      tags: [Documents]
+      summary: Create a document from a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template_id, name]
+              properties:
+                template_id: { type: integer }
+                name: { type: string }
+                custom_message: { type: string }
+                reply_to_email: { type: string, format: email }
+                reply_to_name: { type: string }
+                has_attachments: { type: boolean }
+                attachment_instructions: { type: string }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+
+  /documents/{id}:
+    get:
+      tags: [Documents]
+      summary: Get document with signers and template
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+    delete:
+      tags: [Documents]
+      summary: Delete document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+
+  /documents/{id}/signers:
+    post:
+      tags: [Documents]
+      summary: Add a signer to a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, role]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                role: { type: string }
+                sign_order: { type: integer }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentSigner' }
+
+  /document-signers/{id}:
+    delete:
+      tags: [Documents]
+      summary: Remove a signer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+
+  # ─── SUBMISSIONS ────────────────────────────────────────
+  /submissions:
+    get:
+      tags: [Submissions]
+      summary: List submissions (filterable)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, sent, pending, questions, signed] }
+        - name: search
+          in: query
+          schema: { type: string, description: "Search recipient name or email" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Submission' }
+    post:
+      tags: [Submissions]
+      summary: Create and send a submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_id, recipient_name, recipient_email]
+              properties:
+                document_id: { type: integer }
+                recipient_name: { type: string }
+                recipient_email: { type: string, format: email }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+
+  /submissions/{id}:
+    get:
+      tags: [Submissions]
+      summary: Get submission detail with field values and audit log
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+
+  /submissions/{id}/resend:
+    post:
+      tags: [Submissions]
+      summary: Resend signing invitation email
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Email queued }
+
+  /submissions/bulk:
+    post:
+      tags: [Submissions]
+      summary: Bulk send — array or CSV upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document_id: { type: integer }
+                csv:
+                  type: string
+                  format: binary
+                  description: "CSV with columns: name, email"
+                recipients:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      email: { type: string, format: email }
+      responses:
+        '202':
+          description: Submissions queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued: { type: integer }
+
+  /customers/{email}/submissions:
+    get:
+      tags: [Submissions]
+      summary: All submissions for a specific recipient email (staff view)
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string, format: email }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Submission' }
+
+  # ─── PUBLIC (no auth) ───────────────────────────────────
+  /public/esign/{token}:
+    get:
+      tags: [Public]
+      summary: Load submission for signing (no auth required)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Submission' }
+        '404': { description: Token not found }
+        '410': { description: Expired or already signed }
+    post:
+      tags: [Public]
+      summary: Submit signed fields (no auth required)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field_values]
+              properties:
+                field_values:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      template_field_id: { type: integer }
+                      value: { type: string, description: "Text, date string, '1'/'0' for checkbox, or base64 PNG for signature" }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signed_pdf_url: { type: string }
+        '422':
+          description: Required fields missing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /public/esign/{token}/attachments:
+    get:
+      tags: [Public]
+      summary: List attachments for a submission
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Media' }
+    post:
+      tags: [Public]
+      summary: Upload an attachment
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "PDF, JPG, or PNG. Max 10MB."
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Media' }
+        '422':
+          description: Invalid file type or size
+
+  /public/esign/{token}/attachments/{mediaId}:
+    delete:
+      tags: [Public]
+      summary: Remove an uploaded attachment
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: mediaId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204': { description: Deleted }
+
+  /portal/{token}:
+    get:
+      tags: [Public]
+      summary: Customer portal — all submissions for this recipient
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipient_name: { type: string }
+                  recipient_email: { type: string }
+                  submissions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Submission' }
+
+  # ─── DASHBOARD ──────────────────────────────────────────
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Submission counts for the dashboard
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_sent: { type: integer }
+                  pending: { type: integer }
+                  signed_this_week: { type: integer }
+                  expired: { type: integer }
+                  recent_submissions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Submission' }
