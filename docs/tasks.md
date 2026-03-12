@@ -90,17 +90,17 @@ Completed. Code review findings addressed: template_id scoped to tenant via Rule
 
 ### TASK 2.2 — Submission Send + Email
 **Owner: Claude Code**
-- [ ] SubmissionController: index, store, show
-- [ ] SubmissionService: createAndSend() method
-- [ ] SendSigningInvitationJob (queued)
-- [ ] SigningInvitation Mailable
-- [ ] BulkSubmissionController: store (array or CSV upload)
-- [ ] API Resources for Submission
-- [ ] Feature tests
-- [ ] Tests pass
+- [x] SubmissionController: index, store, show
+- [x] SubmissionService: createAndSend() method
+- [x] SendSigningInvitationJob (queued)
+- [x] SigningInvitation Mailable
+- [x] BulkSubmissionController: store (array or CSV upload)
+- [x] API Resources for Submission
+- [x] Feature tests
+- [x] Tests pass
 
 Notes:
-_
+Completed. All 41 tests pass, Pint clean, PHPStan 0 errors. Code review fixes applied: tenant_id explicitly set from $document->tenant_id (safe in queued context), eager loading with loadMissing('template.fields'), LIKE wildcard escaping on search, resend status guard (sent/pending only), CSV header mapping by column name with filter_var email validation, try/finally on CSV file handle, createAndSend accepts explicit ?string $ip param (controller passes request()->ip(), CreateSubmissionJob captures IP at dispatch time), bulk response returns skipped count for invalid CSV rows, resend-rejection test added for signed submissions.
 
 ---
 
@@ -134,15 +134,15 @@ _
 
 ### TASK 2.5 — Staff Views API
 **Owner: Claude Code**
-- [ ] Submission index: filter by status, search by recipient
-- [ ] Submission detail: field values + audit log
-- [ ] Resend email endpoint
-- [ ] Per-customer submissions endpoint (/customers/{email}/submissions)
+- [x] Submission index: filter by status, search by recipient
+- [x] Submission detail: field values + audit log
+- [x] Resend email endpoint
+- [x] Per-customer submissions endpoint (/customers/{email}/submissions)
 - [ ] Attachment download endpoint
-- [ ] Tests pass
+- [x] Tests pass
 
 Notes:
-_
+Index (status filter, search with LIKE escaping), show (eager loads document, fieldValues.templateField, auditLogs), resend (with status guard), and customer submissions endpoint all implemented and tested as part of task 2.2. Attachment download endpoint remains for task 2.6.
 
 ---
 

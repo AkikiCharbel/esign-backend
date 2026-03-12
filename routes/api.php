@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\BulkSubmissionController;
+use App\Http\Controllers\CustomerSubmissionController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentSignerController;
+use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
@@ -33,4 +36,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
     // Document Signers
     Route::post('/documents/{document}/signers', [DocumentSignerController::class, 'store'])->name('documents.signers.store');
     Route::delete('/documents/{document}/signers/{signer}', [DocumentSignerController::class, 'destroy'])->scopeBindings()->name('document-signers.destroy');
+
+    // Submissions
+    Route::post('/submissions/bulk', [BulkSubmissionController::class, 'store'])->name('submissions.bulk.store');
+    Route::apiResource('submissions', SubmissionController::class)->only(['index', 'store', 'show']);
+    Route::post('/submissions/{submission}/resend', [SubmissionController::class, 'resend'])->name('submissions.resend');
+
+    // Customer Submissions
+    Route::get('/customers/{email}/submissions', [CustomerSubmissionController::class, 'index'])->name('customers.submissions.index');
 });

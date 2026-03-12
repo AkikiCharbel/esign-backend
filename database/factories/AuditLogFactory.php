@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\AuditLog;
+use App\Models\Submission;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -11,14 +12,15 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class AuditLogFactory extends Factory
 {
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
         return [
-            //
+            'submission_id' => Submission::factory(),
+            'event' => 'sent',
+            'metadata' => [],
+            'ip' => fake()->ipv4(),
         ];
     }
 }
