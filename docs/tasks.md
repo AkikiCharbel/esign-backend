@@ -106,18 +106,18 @@ Completed. All 41 tests pass, Pint clean, PHPStan 0 errors. Code review fixes ap
 
 ### TASK 2.3 — Public Signing Endpoint + PDF Generation
 **Owner: Claude Code**
-- [ ] PublicSigningController: show (by token), update (submit signing)
-- [ ] SignedPdfService: generates flattened signed PDF
-- [ ] GenerateSignedPdfJob (queued)
-- [ ] Submission status → signed on completion
-- [ ] AuditLog events: viewed, signed
-- [ ] Expiry check (return 410 if expired)
-- [ ] Public routes outside auth:sanctum middleware
-- [ ] Feature tests for signing flow
-- [ ] Tests pass
+- [x] PublicSigningController: show (by token), update (submit signing)
+- [x] SignedPdfService: generates flattened signed PDF
+- [x] GenerateSignedPdfJob (queued)
+- [x] Submission status → signed on completion
+- [x] AuditLog events: viewed, signed
+- [x] Expiry check (return 410 if expired)
+- [x] Public routes outside auth:sanctum middleware
+- [x] Feature tests for signing flow
+- [x] Tests pass
 
 Notes:
-_
+Completed. All 55 tests pass, Pint clean. Code review fixes applied: (1) N+1 eliminated in SignedPdfService — fields eager-loaded into $fieldMap once, (2) user_agent captured and stored alongside ip_address, (3) double-submit race condition closed — status set to `processing` before job dispatch, both show/update reject processing with 410, (4) temp PDF cleanup via try/finally in GenerateSignedPdfJob, (5) cross-tenant field injection blocked — submitted field IDs validated against template before saving, (6) base64 image validation added via getimagesizefromstring() for PNG/JPEG, (7) cross-tenant token access test added confirming public route works across tenants by design, (8) signed audit log event added to job. Migration added for processing status. Tests grew from 9 to 13.
 
 ---
 

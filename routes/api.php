@@ -5,11 +5,16 @@ use App\Http\Controllers\BulkSubmissionController;
 use App\Http\Controllers\CustomerSubmissionController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentSignerController;
+use App\Http\Controllers\Public\PublicSigningController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
 use Illuminate\Support\Facades\Route;
+
+// Public signing routes (no auth required)
+Route::get('/public/esign/{token}', [PublicSigningController::class, 'show'])->name('public.esign.show');
+Route::post('/public/esign/{token}', [PublicSigningController::class, 'update'])->name('public.esign.update');
 
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
