@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BulkSubmissionController;
 use App\Http\Controllers\CustomerSubmissionController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentSignerController;
 use App\Http\Controllers\Public\CustomerPortalController;
@@ -31,6 +32,9 @@ Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login')
 Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
     Route::post('/auth/logout', [AuthController::class, 'logout'])->name('auth.logout');
     Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
+
+    // Dashboard
+    Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
 
     // Templates
     Route::apiResource('templates', TemplateController::class)->except(['update']);
