@@ -5,6 +5,8 @@ use App\Http\Controllers\BulkSubmissionController;
 use App\Http\Controllers\CustomerSubmissionController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentSignerController;
+use App\Http\Controllers\Public\CustomerPortalController;
+use App\Http\Controllers\Public\PublicAttachmentController;
 use App\Http\Controllers\Public\PublicSigningController;
 use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TemplateController;
@@ -15,6 +17,14 @@ use Illuminate\Support\Facades\Route;
 // Public signing routes (no auth required)
 Route::get('/public/esign/{token}', [PublicSigningController::class, 'show'])->name('public.esign.show');
 Route::post('/public/esign/{token}', [PublicSigningController::class, 'update'])->name('public.esign.update');
+
+// Customer portal
+Route::get('/portal/{token}', [CustomerPortalController::class, 'show'])->name('portal.show');
+
+// Public attachments
+Route::get('/public/esign/{token}/attachments', [PublicAttachmentController::class, 'index'])->name('public.esign.attachments.index');
+Route::post('/public/esign/{token}/attachments', [PublicAttachmentController::class, 'store'])->middleware('throttle:10,1')->name('public.esign.attachments.store');
+Route::delete('/public/esign/{token}/attachments/{mediaId}', [PublicAttachmentController::class, 'destroy'])->name('public.esign.attachments.destroy');
 
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
