@@ -24,7 +24,9 @@ class SubmissionResource extends JsonResource
             'viewed_at' => $this->viewed_at,
             'signed_at' => $this->signed_at,
             'expires_at' => $this->expires_at,
-            'signed_pdf_url' => $this->getFirstMediaUrl('signed-pdf') ?: null,
+            'signed_pdf_url' => $this->getFirstMedia('signed-pdf')
+                ? route('media.show', $this->getFirstMedia('signed-pdf'))
+                : null,
             'document' => DocumentResource::make($this->whenLoaded('document')),
             'field_values' => SubmissionFieldValueResource::collection($this->whenLoaded('fieldValues')),
             'audit_logs' => AuditLogResource::collection($this->whenLoaded('auditLogs')),

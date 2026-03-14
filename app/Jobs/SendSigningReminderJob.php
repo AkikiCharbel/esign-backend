@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Mail\SigningInvitationMail;
+use App\Mail\SigningReminderMail;
 use App\Models\Submission;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -11,7 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 
-class SendSigningInvitationJob implements ShouldQueue
+class SendSigningReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -22,6 +22,6 @@ class SendSigningInvitationJob implements ShouldQueue
         $this->submission->load('document.template', 'document.creator');
 
         Mail::to($this->submission->recipient_email)
-            ->send(new SigningInvitationMail($this->submission));
+            ->send(new SigningReminderMail($this->submission));
     }
 }

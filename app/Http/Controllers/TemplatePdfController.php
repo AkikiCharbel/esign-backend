@@ -22,7 +22,7 @@ class TemplatePdfController extends Controller
         $template->update(['page_count' => $count]);
 
         return response()->json([
-            'pdf_url' => $template->getFirstMediaUrl('template-pdf'),
+            'pdf_url' => route('media.show', $media),
             'page_count' => $count,
         ]);
     }

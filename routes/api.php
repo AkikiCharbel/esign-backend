@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\BulkSubmissionController;
 use App\Http\Controllers\CustomerSubmissionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentSignerController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\Public\CustomerPortalController;
 use App\Http\Controllers\Public\PublicAttachmentController;
 use App\Http\Controllers\Public\PublicSigningController;
@@ -27,6 +29,10 @@ Route::get('/public/esign/{token}/attachments', [PublicAttachmentController::cla
 Route::post('/public/esign/{token}/attachments', [PublicAttachmentController::class, 'store'])->middleware('throttle:10,1')->name('public.esign.attachments.store');
 Route::delete('/public/esign/{token}/attachments/{mediaId}', [PublicAttachmentController::class, 'destroy'])->name('public.esign.attachments.destroy');
 
+// Media (public, served through Laravel for CORS)
+Route::get('/media/{media}', [MediaController::class, 'show'])->name('media.show');
+
+Route::post('/auth/register', [RegisterController::class, 'registerTenant'])->name('auth.register');
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
@@ -35,6 +41,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
 
     // Dashboard
     Route::get('/dashboard/stats', [DashboardController::class, 'stats'])->name('dashboard.stats');
+    Route::get('/dashboard/recent', [DashboardController::class, 'stats'])->name('dashboard.recent');
 
     // Templates
     Route::apiResource('templates', TemplateController::class)->except(['update']);

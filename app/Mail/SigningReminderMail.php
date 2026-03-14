@@ -12,7 +12,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class SigningInvitationMail extends Mailable
+class SigningReminderMail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -31,7 +31,7 @@ class SigningInvitationMail extends Mailable
                 config('mail.from.address'),
                 config('mail.from.name'),
             ),
-            subject: "[{$document->name}] You have a document to sign",
+            subject: "Reminder: {$document->name} is waiting for your signature",
         );
 
         if ($document->reply_to_email) {
@@ -47,7 +47,7 @@ class SigningInvitationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.signing-invitation',
+            view: 'emails.signing-reminder',
             with: [
                 'signing_url' => config('app.frontend_url').'/public/esign/'.$this->submission->token,
             ],

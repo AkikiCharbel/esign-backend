@@ -20,7 +20,9 @@ class TemplateResource extends JsonResource
             'description' => $this->description,
             'page_count' => $this->page_count,
             'status' => $this->status,
-            'pdf_url' => $this->getFirstMediaUrl('template-pdf'),
+            'pdf_url' => $this->getFirstMedia('template-pdf')
+                ? route('media.show', $this->getFirstMedia('template-pdf'))
+                : '',
             'fields' => TemplateFieldResource::collection($this->whenLoaded('fields')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Mail\SigningCompletedMail;
 use App\Models\Submission;
 use App\Services\SignedPdfService;
 use Illuminate\Bus\Queueable;
@@ -9,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
 class GenerateSignedPdfJob implements ShouldQueue
 {
@@ -43,5 +45,7 @@ class GenerateSignedPdfJob implements ShouldQueue
             'event' => 'signed',
             'ip' => $this->ipAddress,
         ]);
+
+        Mail::send(new SigningCompletedMail($this->submission));
     }
 }

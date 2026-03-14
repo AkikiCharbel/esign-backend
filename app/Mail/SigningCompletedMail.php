@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Document;
 use App\Models\Submission;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
@@ -12,44 +13,38 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class SigningInvitationMail extends Mailable
+class SigningCompletedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(public Submission $submission)
     {
-        $this->submission->loadMissing('document.template', 'document.creator');
+        $this->submission->loadMissing('document.creator');
     }
 
     public function envelope(): Envelope
     {
         /** @var Document $document */
         $document = $this->submission->document;
+        /** @var User $creator */
+        $creator = $document->creator;
 
-        $envelope = new Envelope(
+        return new Envelope(
             from: new Address(
                 config('mail.from.address'),
                 config('mail.from.name'),
             ),
-            subject: "[{$document->name}] You have a document to sign",
+            to: [new Address($creator->email)],
+            subject: "✅ {$this->submission->recipient_name} has signed {$document->name}",
         );
-
-        if ($document->reply_to_email) {
-            $envelope->replyTo[] = new Address(
-                $document->reply_to_email,
-                $document->reply_to_name ?? '',
-            );
-        }
-
-        return $envelope;
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.signing-invitation',
+            view: 'emails.signing-completed',
             with: [
-                'signing_url' => config('app.frontend_url').'/public/esign/'.$this->submission->token,
+                'dashboard_url' => config('app.frontend_url').'/submissions/'.$this->submission->id,
             ],
         );
     }

@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSubmissionRequest;
 use App\Http\Resources\SubmissionResource;
-use App\Jobs\SendSigningInvitationJob;
+use App\Jobs\SendSigningReminderJob;
 use App\Models\Document;
 use App\Models\Submission;
 use App\Services\SubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class SubmissionController extends Controller
 {
@@ -61,12 +62,12 @@ class SubmissionController extends Controller
         return SubmissionResource::make($submission);
     }
 
-    public function resend(Submission $submission): JsonResponse
+    public function resend(Submission $submission): Response
     {
-        abort_unless(in_array($submission->status, ['sent', 'pending']), 422, 'Cannot resend a completed submission.');
+        abort_unless($submission->status === 'sent', 422, 'Cannot resend a completed submission.');
 
-        SendSigningInvitationJob::dispatch($submission);
+        SendSigningReminderJob::dispatch($submission);
 
-        return response()->json(null, 204);
+        return response()->noContent();
     }
 }
