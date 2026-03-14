@@ -1,0 +1,1618 @@
+openapi: 3.0.3
+info:
+  title: DocuSign Clone API
+  version: 1.0.0
+  description: E-signature platform API — Laravel 12 + Sanctum token auth
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication (login, logout, current user)
+  - name: Registration
+    description: Tenant registration and invitation acceptance
+  - name: Templates
+    description: Template CRUD, PDF upload, and field management
+  - name: Documents
+    description: Document CRUD and signer management
+  - name: Submissions
+    description: Submission lifecycle, bulk send, and customer history
+  - name: Workspace
+    description: Workspace settings, members, and invitations (admin)
+  - name: Public
+    description: Public signing, attachments, and customer portal (no auth)
+  - name: Dashboard
+    description: Dashboard statistics
+  - name: Media
+    description: Media file serving
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        settings: { type: object, nullable: true }
+        logo_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        tenant_id: { type: integer }
+        roles: { type: array, items: { type: string } }
+
+    Template:
+      type: object
+      properties:
+        id: { type: integer }
+        tenant_id: { type: integer }
+        created_by: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        page_count: { type: integer }
+        status: { type: string, enum: [draft, active] }
+        pdf_url: { type: string, nullable: true }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/TemplateField' }
+          description: Included when loaded
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TemplateField:
+      type: object
+      properties:
+        id: { type: integer }
+        template_id: { type: integer }
+        page: { type: integer }
+        type:
+          type: string
+          enum: [signature, initials, text, date, checkbox, radio, dropdown]
+        label: { type: string }
+        required: { type: boolean }
+        x: { type: number, description: "Percentage 0–100 of page width" }
+        y: { type: number, description: "Percentage 0–100 of page height" }
+        width: { type: number, description: "Percentage 0–100" }
+        height: { type: number, description: "Percentage 0–100" }
+        font_size: { type: integer }
+        multiline: { type: boolean }
+        options: { type: array, items: { type: string }, nullable: true }
+        signer_role: { type: string, nullable: true }
+        order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Document:
+      type: object
+      properties:
+        id: { type: integer }
+        tenant_id: { type: integer }
+        template_id: { type: integer }
+        created_by: { type: integer }
+        name: { type: string }
+        custom_message: { type: string, nullable: true }
+        reply_to_email: { type: string, nullable: true }
+        reply_to_name: { type: string, nullable: true }
+        has_attachments: { type: boolean }
+        attachment_instructions: { type: string, nullable: true }
+        template:
+          $ref: '#/components/schemas/Template'
+          description: Included when loaded
+        signers:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentSigner' }
+          description: Included when loaded
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DocumentSigner:
+      type: object
+      properties:
+        id: { type: integer }
+        document_id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        sign_order: { type: integer }
+        status: { type: string, enum: [pending, signed] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Submission:
+      type: object
+      properties:
+        id: { type: integer }
+        tenant_id: { type: integer }
+        document_id: { type: integer }
+        recipient_name: { type: string }
+        recipient_email: { type: string, format: email }
+        status:
+          type: string
+          enum: [draft, sent, pending, questions, processing, signed]
+        token: { type: string }
+        signed_pdf_url: { type: string, nullable: true }
+        sent_at: { type: string, format: date-time, nullable: true }
+        viewed_at: { type: string, format: date-time, nullable: true }
+        signed_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        document:
+          $ref: '#/components/schemas/Document'
+          description: Included when loaded
+        field_values:
+          type: array
+          items: { $ref: '#/components/schemas/SubmissionFieldValue' }
+          description: Included when loaded
+        audit_logs:
+          type: array
+          items: { $ref: '#/components/schemas/AuditLog' }
+          description: Included when loaded
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    SubmissionFieldValue:
+      type: object
+      properties:
+        id: { type: integer }
+        submission_id: { type: integer }
+        template_field_id: { type: integer }
+        value: { type: string, nullable: true }
+        field:
+          $ref: '#/components/schemas/TemplateField'
+          description: Included when loaded
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        submission_id: { type: integer }
+        event: { type: string, enum: [sent, viewed, signed] }
+        metadata: { type: object, nullable: true }
+        ip: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Media:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        url: { type: string }
+        mime_type: { type: string }
+        size: { type: integer, description: File size in bytes }
+
+    WorkspaceInvitation:
+      type: object
+      properties:
+        id: { type: integer }
+        email: { type: string, format: email }
+        role: { type: string, enum: [staff, viewer] }
+        accepted_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        inviter:
+          $ref: '#/components/schemas/User'
+          description: Included when loaded
+
+    Member:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [admin, staff, viewer] }
+        joined_at: { type: string, format: date-time }
+        avatar_url: { type: string, nullable: true }
+
+    DashboardStats:
+      type: object
+      properties:
+        awaiting_signature: { type: integer }
+        pending: { type: integer }
+        signed_this_week: { type: integer }
+        expired: { type: integer }
+        recent_submissions:
+          type: array
+          items: { $ref: '#/components/schemas/Submission' }
+
+    Paginated:
+      type: object
+      properties:
+        data: { type: array }
+        current_page: { type: integer }
+        last_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+
+paths:
+
+  # ─── AUTH ───────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive a Bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '422':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current token
+      responses:
+        '204':
+          description: Logged out
+        '401':
+          description: Unauthenticated
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401':
+          description: Unauthenticated
+
+  # ─── REGISTRATION ──────────────────────────────────────
+
+  /auth/register:
+    post:
+      tags: [Registration]
+      summary: Register a new tenant and admin user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workspace_name, workspace_slug, name, email, password, password_confirmation]
+              properties:
+                workspace_name: { type: string, maxLength: 100 }
+                workspace_slug:
+                  type: string
+                  maxLength: 50
+                  pattern: '^[a-z0-9-]+$'
+                  description: Lowercase letters, numbers, and hyphens only
+                name: { type: string, maxLength: 100 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string, minLength: 8 }
+      responses:
+        '201':
+          description: Tenant and user created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+                  tenant: { $ref: '#/components/schemas/Tenant' }
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/accept-invitation:
+    post:
+      tags: [Registration]
+      summary: Accept a workspace invitation and create user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, name, password, password_confirmation]
+              properties:
+                token: { type: string }
+                name: { type: string, maxLength: 100 }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string, minLength: 8 }
+      responses:
+        '201':
+          description: User created and joined workspace
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+                  tenant: { $ref: '#/components/schemas/Tenant' }
+        '404':
+          description: Invitation not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Invitation already accepted or email already a member
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Invitation has expired
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ─── TEMPLATES ──────────────────────────────────────────
+
+  /templates:
+    get:
+      tags: [Templates]
+      summary: List templates (paginated)
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated template list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Template' }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Templates]
+      summary: Create a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 255 }
+                description: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Template' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /templates/{template}:
+    get:
+      tags: [Templates]
+      summary: Get template with fields
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Template detail with fields
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Template' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+    patch:
+      tags: [Templates]
+      summary: Update template metadata
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 255 }
+                description: { type: string, nullable: true }
+                status: { type: string, enum: [draft, active] }
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Template' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Templates]
+      summary: Delete template
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+
+  /templates/{template}/pdf:
+    post:
+      tags: [Templates]
+      summary: Upload PDF for a template
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [pdf]
+              properties:
+                pdf:
+                  type: string
+                  format: binary
+                  description: "PDF file, max 20MB"
+      responses:
+        '200':
+          description: PDF uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdf_url: { type: string }
+                  page_count: { type: integer }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+        '422':
+          description: Validation error (invalid file type or size)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /templates/{template}/fields:
+    post:
+      tags: [Templates]
+      summary: Add a field to a template
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [page, type, label, x, y, width, height]
+              properties:
+                page: { type: integer, minimum: 1 }
+                type: { type: string, enum: [signature, initials, text, date, checkbox, radio, dropdown] }
+                label: { type: string, maxLength: 255 }
+                required: { type: boolean }
+                x: { type: number, minimum: 0, maximum: 100 }
+                y: { type: number, minimum: 0, maximum: 100 }
+                width: { type: number, minimum: 0, maximum: 100 }
+                height: { type: number, minimum: 0, maximum: 100 }
+                font_size: { type: integer, minimum: 6, maximum: 72 }
+                multiline: { type: boolean }
+                options: { type: array, items: { type: string }, nullable: true }
+                signer_role: { type: string, maxLength: 255, nullable: true }
+                order: { type: integer, minimum: 0 }
+      responses:
+        '201':
+          description: Field created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/TemplateField' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /templates/{template}/fields/sync:
+    put:
+      tags: [Templates]
+      summary: Replace all fields for a template (bulk save from builder)
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fields]
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    required: [page, type, label, x, y, width, height]
+                    properties:
+                      page: { type: integer, minimum: 1 }
+                      type: { type: string, enum: [signature, initials, text, date, checkbox, radio, dropdown] }
+                      label: { type: string, maxLength: 255 }
+                      required: { type: boolean }
+                      x: { type: number, minimum: 0, maximum: 100 }
+                      y: { type: number, minimum: 0, maximum: 100 }
+                      width: { type: number, minimum: 0, maximum: 100 }
+                      height: { type: number, minimum: 0, maximum: 100 }
+                      font_size: { type: integer, minimum: 6, maximum: 72 }
+                      multiline: { type: boolean }
+                      options: { type: array, items: { type: string }, nullable: true }
+                      signer_role: { type: string, maxLength: 255, nullable: true }
+                      order: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Fields replaced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/TemplateField' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template not found
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /templates/{template}/fields/{field}:
+    patch:
+      tags: [Templates]
+      summary: Update a template field
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: field
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                page: { type: integer, minimum: 1 }
+                type: { type: string, enum: [signature, initials, text, date, checkbox, radio, dropdown] }
+                label: { type: string, maxLength: 255 }
+                required: { type: boolean }
+                x: { type: number, minimum: 0, maximum: 100 }
+                y: { type: number, minimum: 0, maximum: 100 }
+                width: { type: number, minimum: 0, maximum: 100 }
+                height: { type: number, minimum: 0, maximum: 100 }
+                font_size: { type: integer, minimum: 6, maximum: 72 }
+                multiline: { type: boolean }
+                options: { type: array, items: { type: string }, nullable: true }
+                signer_role: { type: string, maxLength: 255, nullable: true }
+                order: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Field updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/TemplateField' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template or field not found
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Templates]
+      summary: Delete a template field
+      parameters:
+        - name: template
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: field
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Template or field not found
+
+  # ─── DOCUMENTS ──────────────────────────────────────────
+
+  /documents:
+    get:
+      tags: [Documents]
+      summary: List documents (paginated)
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated document list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Document' }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Documents]
+      summary: Create a document from a template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template_id, name]
+              properties:
+                template_id: { type: integer }
+                name: { type: string, maxLength: 255 }
+                custom_message: { type: string, nullable: true }
+                reply_to_email: { type: string, format: email, maxLength: 255, nullable: true }
+                reply_to_name: { type: string, maxLength: 255, nullable: true }
+                has_attachments: { type: boolean }
+                attachment_instructions: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Document' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /documents/{document}:
+    get:
+      tags: [Documents]
+      summary: Get document with template and signers
+      parameters:
+        - name: document
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Document' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Document not found
+    delete:
+      tags: [Documents]
+      summary: Delete document
+      parameters:
+        - name: document
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Document not found
+
+  /documents/{document}/signers:
+    post:
+      tags: [Documents]
+      summary: Add a signer to a document
+      parameters:
+        - name: document
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, role]
+              properties:
+                name: { type: string, maxLength: 255 }
+                email: { type: string, format: email, maxLength: 255 }
+                role: { type: string, maxLength: 255 }
+                sign_order: { type: integer, minimum: 1, nullable: true }
+      responses:
+        '201':
+          description: Signer added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/DocumentSigner' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Document not found
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /documents/{document}/signers/{signer}:
+    delete:
+      tags: [Documents]
+      summary: Remove a signer from a document
+      parameters:
+        - name: document
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: signer
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Document or signer not found
+
+  # ─── SUBMISSIONS ────────────────────────────────────────
+
+  /submissions:
+    get:
+      tags: [Submissions]
+      summary: List submissions (paginated, filterable)
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [draft, sent, pending, questions, processing, signed] }
+        - name: search
+          in: query
+          schema: { type: string }
+          description: Search recipient name or email
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated submission list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Submission' }
+        '401':
+          description: Unauthenticated
+    post:
+      tags: [Submissions]
+      summary: Create and send a submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_id, recipient_name, recipient_email]
+              properties:
+                document_id: { type: integer }
+                recipient_name: { type: string, maxLength: 255 }
+                recipient_email: { type: string, format: email, maxLength: 255 }
+      responses:
+        '201':
+          description: Submission created and sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Submission' }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /submissions/{submission}:
+    get:
+      tags: [Submissions]
+      summary: Get submission detail with field values and audit log
+      parameters:
+        - name: submission
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Submission detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Submission' }
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Submission not found
+
+  /submissions/{submission}/resend:
+    post:
+      tags: [Submissions]
+      summary: Resend signing invitation email
+      parameters:
+        - name: submission
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Reminder email queued
+        '401':
+          description: Unauthenticated
+        '404':
+          description: Submission not found
+        '422':
+          description: Submission is not in "sent" status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /submissions/bulk:
+    post:
+      tags: [Submissions]
+      summary: Bulk send — JSON array or CSV upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [document_id]
+              properties:
+                document_id: { type: integer }
+                csv:
+                  type: string
+                  format: binary
+                  description: "CSV with columns: name, email. Max 5MB."
+                recipients:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, email]
+                    properties:
+                      name: { type: string, maxLength: 255 }
+                      email: { type: string, format: email, maxLength: 255 }
+              description: Either csv OR recipients must be provided
+      responses:
+        '202':
+          description: Submissions queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queued: { type: integer }
+                  skipped: { type: integer, description: Rows skipped due to invalid data (only present if > 0) }
+        '401':
+          description: Unauthenticated
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /customers/{email}/submissions:
+    get:
+      tags: [Submissions]
+      summary: All submissions for a specific recipient email (staff view)
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string, format: email }
+        - name: page
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Paginated submission list for customer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Paginated'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Submission' }
+        '401':
+          description: Unauthenticated
+
+  # ─── WORKSPACE ──────────────────────────────────────────
+
+  /workspace:
+    get:
+      tags: [Workspace]
+      summary: Get current workspace details
+      responses:
+        '200':
+          description: Workspace detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Tenant' }
+        '401':
+          description: Unauthenticated
+    patch:
+      tags: [Workspace]
+      summary: Update workspace settings (admin only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 100 }
+                slug:
+                  type: string
+                  maxLength: 50
+                  pattern: '^[a-z0-9-]+$'
+                  description: Lowercase letters, numbers, and hyphens only
+                settings:
+                  type: object
+                  properties:
+                    timezone: { type: string, description: Valid timezone identifier }
+                    date_format: { type: string, enum: ['Y-m-d', 'd/m/Y', 'm/d/Y'] }
+      responses:
+        '200':
+          description: Workspace updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Tenant' }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /workspace/logo:
+    post:
+      tags: [Workspace]
+      summary: Upload workspace logo (admin only)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [logo]
+              properties:
+                logo:
+                  type: string
+                  format: binary
+                  description: "JPG, JPEG, PNG, or WebP. Max 2MB."
+      responses:
+        '200':
+          description: Logo uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logo_url: { type: string, nullable: true }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Workspace]
+      summary: Delete workspace logo (admin only)
+      responses:
+        '204':
+          description: Logo deleted
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+
+  /workspace/members:
+    get:
+      tags: [Workspace]
+      summary: List workspace members (admin only)
+      responses:
+        '200':
+          description: Member list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Member' }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+
+  /workspace/members/{member}:
+    patch:
+      tags: [Workspace]
+      summary: Update member role (admin only)
+      parameters:
+        - name: member
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [admin, staff, viewer] }
+      responses:
+        '200':
+          description: Member role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Member' }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin or not in same tenant
+        '422':
+          description: Cannot change own role or demote last admin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Workspace]
+      summary: Remove a member from workspace (admin only)
+      parameters:
+        - name: member
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Member removed
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin or not in same tenant
+        '422':
+          description: Cannot remove yourself or last admin
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /workspace/invitations:
+    get:
+      tags: [Workspace]
+      summary: List pending workspace invitations (admin only)
+      responses:
+        '200':
+          description: Pending invitation list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkspaceInvitation' }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+    post:
+      tags: [Workspace]
+      summary: Invite a member to the workspace (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role:
+                  type: string
+                  enum: [staff, viewer]
+                  description: "Only staff or viewer — admin role cannot be invited"
+      responses:
+        '201':
+          description: Invitation created and email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/WorkspaceInvitation' }
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not admin
+        '422':
+          description: Validation error (email already member or has pending invite)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /workspace/invitations/{invitation}:
+    delete:
+      tags: [Workspace]
+      summary: Cancel a pending invitation (admin only)
+      parameters:
+        - name: invitation
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Invitation cancelled
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not authorized
+        '404':
+          description: Invitation not found
+
+  # ─── PUBLIC (no auth) ───────────────────────────────────
+
+  /public/esign/{token}:
+    get:
+      tags: [Public]
+      summary: Load submission for signing (no auth required)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Submission with document, template fields, and field values
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Submission' }
+        '404':
+          description: Submission not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Expired or already signed/processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [Public]
+      summary: Submit signed fields (no auth required)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [field_values]
+              properties:
+                field_values:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [template_field_id]
+                    properties:
+                      template_field_id: { type: integer }
+                      value:
+                        type: string
+                        nullable: true
+                        description: "Text, date string, '1'/'0' for checkbox, or base64 PNG for signature"
+      responses:
+        '200':
+          description: Signing complete, PDF generation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  signed_pdf_url: { type: string, nullable: true }
+        '404':
+          description: Submission not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Expired or already signed/processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Missing required fields or invalid field IDs
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Missing document or template
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /public/esign/{token}/attachments:
+    get:
+      tags: [Public]
+      summary: List attachments for a submission
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Attachment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Media' }
+        '404':
+          description: Submission not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    post:
+      tags: [Public]
+      summary: Upload an attachment
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: "PDF, JPG, JPEG, or PNG. Max 10MB."
+      responses:
+        '201':
+          description: Attachment uploaded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Media' }
+        '404':
+          description: Submission not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Expired or already signed/processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Invalid file type/size or max attachments reached (10)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /public/esign/{token}/attachments/{mediaId}:
+    delete:
+      tags: [Public]
+      summary: Remove an uploaded attachment
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: mediaId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Submission or attachment not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Expired or already signed/processing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /portal/{token}:
+    get:
+      tags: [Public]
+      summary: Customer portal — all submissions for this recipient
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Customer portal data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipient_name: { type: string }
+                  recipient_email: { type: string, format: email }
+                  submissions:
+                    type: array
+                    items: { $ref: '#/components/schemas/Submission' }
+        '404':
+          description: Submission not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Portal link has expired
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  # ─── DASHBOARD ──────────────────────────────────────────
+
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Submission counts and recent activity for the dashboard
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardStats' }
+        '401':
+          description: Unauthenticated
+
+  /dashboard/recent:
+    get:
+      tags: [Dashboard]
+      summary: Alias for /dashboard/stats
+      description: Returns the same data as /dashboard/stats (same controller method)
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardStats' }
+        '401':
+          description: Unauthenticated
+
+  # ─── MEDIA ─────────────────────────────────────────────
+
+  /media/{media}:
+    get:
+      tags: [Media]
+      summary: Serve a media file (public, used for PDFs, logos, signed docs)
+      security: []
+      parameters:
+        - name: media
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: File content
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Media not found
