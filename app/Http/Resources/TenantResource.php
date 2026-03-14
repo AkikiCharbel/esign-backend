@@ -17,6 +17,9 @@ class TenantResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'settings' => $this->settings,
+            'logo_url' => $this->getFirstMedia('logo')
+                ? route('media.show', $this->getFirstMedia('logo'))
+                : null,
             'created_at' => $this->created_at,
         ];
     }

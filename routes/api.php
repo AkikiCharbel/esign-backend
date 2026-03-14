@@ -16,6 +16,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
 use App\Http\Controllers\Workspace\InvitationController;
+use App\Http\Controllers\Workspace\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 // Public signing routes (no auth required)
@@ -72,6 +73,12 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
 
     // Customer Submissions
     Route::get('/customers/{email}/submissions', [CustomerSubmissionController::class, 'index'])->name('customers.submissions.index');
+
+    // Workspace Settings
+    Route::get('/workspace', [WorkspaceController::class, 'show'])->name('workspace.show');
+    Route::patch('/workspace', [WorkspaceController::class, 'update'])->name('workspace.update');
+    Route::post('/workspace/logo', [WorkspaceController::class, 'uploadLogo'])->name('workspace.logo.store');
+    Route::delete('/workspace/logo', [WorkspaceController::class, 'deleteLogo'])->name('workspace.logo.destroy');
 
     // Workspace Invitations
     Route::get('/workspace/invitations', [InvitationController::class, 'index'])->name('workspace.invitations.index');
