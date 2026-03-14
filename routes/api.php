@@ -15,6 +15,7 @@ use App\Http\Controllers\SubmissionController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
+use App\Http\Controllers\Workspace\InvitationController;
 use Illuminate\Support\Facades\Route;
 
 // Public signing routes (no auth required)
@@ -33,6 +34,7 @@ Route::delete('/public/esign/{token}/attachments/{mediaId}', [PublicAttachmentCo
 Route::get('/media/{media}', [MediaController::class, 'show'])->name('media.show');
 
 Route::post('/auth/register', [RegisterController::class, 'registerTenant'])->name('auth.register');
+Route::post('/auth/accept-invitation', [RegisterController::class, 'acceptInvitation'])->name('auth.accept-invitation');
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
 Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
@@ -70,4 +72,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
 
     // Customer Submissions
     Route::get('/customers/{email}/submissions', [CustomerSubmissionController::class, 'index'])->name('customers.submissions.index');
+
+    // Workspace Invitations
+    Route::get('/workspace/invitations', [InvitationController::class, 'index'])->name('workspace.invitations.index');
+    Route::post('/workspace/invitations', [InvitationController::class, 'store'])->name('workspace.invitations.store');
+    Route::delete('/workspace/invitations/{invitation}', [InvitationController::class, 'destroy'])->name('workspace.invitations.destroy');
 });

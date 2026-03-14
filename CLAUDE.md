@@ -81,6 +81,7 @@
 - Eloquent API Resources for ALL API responses
 - Queued jobs (`ShouldQueue`) for time-consuming operations (emails, PDF generation)
 - Run `vendor/bin/pint --dirty --format agent` after modifying any PHP file
+- Run `vendor/bin/phpstan` after modifying any PHP file
 - Use named routes and `route()` function for URL generation
 - `config('key')` not `env()` outside config files
 
