@@ -16,6 +16,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TemplateFieldController;
 use App\Http\Controllers\TemplatePdfController;
 use App\Http\Controllers\Workspace\InvitationController;
+use App\Http\Controllers\Workspace\MemberController;
 use App\Http\Controllers\Workspace\WorkspaceController;
 use Illuminate\Support\Facades\Route;
 
@@ -79,6 +80,11 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function (): void {
     Route::patch('/workspace', [WorkspaceController::class, 'update'])->name('workspace.update');
     Route::post('/workspace/logo', [WorkspaceController::class, 'uploadLogo'])->name('workspace.logo.store');
     Route::delete('/workspace/logo', [WorkspaceController::class, 'deleteLogo'])->name('workspace.logo.destroy');
+
+    // Workspace Members
+    Route::get('/workspace/members', [MemberController::class, 'index'])->name('workspace.members.index');
+    Route::patch('/workspace/members/{member}', [MemberController::class, 'update'])->name('workspace.members.update');
+    Route::delete('/workspace/members/{member}', [MemberController::class, 'destroy'])->name('workspace.members.destroy');
 
     // Workspace Invitations
     Route::get('/workspace/invitations', [InvitationController::class, 'index'])->name('workspace.invitations.index');
