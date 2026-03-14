@@ -17,6 +17,7 @@ class SyncTemplateFieldsRequest extends FormRequest
     {
         return [
             'fields' => ['required', 'array'],
+            'fields.*.id' => ['sometimes', 'nullable', 'integer'],
             'fields.*.page' => ['required', 'integer', 'min:1'],
             'fields.*.type' => ['required', Rule::in(['signature', 'initials', 'text', 'date', 'checkbox', 'radio', 'dropdown'])],
             'fields.*.label' => ['required', 'string', 'max:255'],

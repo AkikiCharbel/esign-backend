@@ -6,6 +6,7 @@ use App\Http\Requests\StoreTemplateFieldRequest;
 use App\Http\Requests\SyncTemplateFieldsRequest;
 use App\Http\Requests\UpdateTemplateFieldRequest;
 use App\Http\Resources\TemplateFieldResource;
+use App\Models\SubmissionFieldValue;
 use App\Models\Template;
 use App\Models\TemplateField;
 use Illuminate\Http\JsonResponse;
@@ -39,10 +40,43 @@ class TemplateFieldController extends Controller
 
     public function sync(SyncTemplateFieldsRequest $request, Template $template): AnonymousResourceCollection
     {
-        $fields = DB::transaction(function () use ($request, $template) {
-            $template->fields()->delete();
+        /** @var array<int, array<string, mixed>> $validatedFields */
+        $validatedFields = $request->validated('fields');
 
-            return $template->fields()->createMany($request->validated('fields'));
+        $fields = DB::transaction(function () use ($validatedFields, $template) {
+            $incoming = collect($validatedFields);
+            $incomingIds = $incoming->pluck('id')->filter()->all();
+
+            // Remove fields no longer in the payload (and their submission values)
+            $removedFieldIds = $template->fields()
+                ->whereNotIn('id', $incomingIds)
+                ->pluck('id');
+
+            if ($removedFieldIds->isNotEmpty()) {
+                SubmissionFieldValue::whereIn('template_field_id', $removedFieldIds)->delete();
+                TemplateField::whereIn('id', $removedFieldIds)->delete();
+            }
+
+            /** @var TemplateField[] $result */
+            $result = [];
+
+            foreach ($incoming as $fieldData) {
+                if (! empty($fieldData['id'])) {
+                    /** @var TemplateField|null $field */
+                    $field = $template->fields()->find($fieldData['id']);
+                    if ($field) {
+                        $field->update($fieldData);
+                        $result[] = $field;
+                        continue;
+                    }
+                }
+
+                // Create new field
+                unset($fieldData['id']);
+                $result[] = $template->fields()->create($fieldData);
+            }
+
+            return collect($result);
         });
 
         return TemplateFieldResource::collection($fields);

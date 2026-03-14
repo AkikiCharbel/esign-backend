@@ -23,8 +23,21 @@ class PublicSigningController extends Controller
             return response()->json(['message' => 'Submission not found.'], 404);
         }
 
-        if (in_array($submission->status, ['signed', 'processing']) || ($submission->expires_at !== null && now()->greaterThan($submission->expires_at))) {
-            return response()->json(['message' => 'This signing link has expired or already been completed.'], 410);
+        if (in_array($submission->status, ['signed', 'processing'])) {
+            $signedPdf = $submission->getFirstMedia('signed-pdf');
+
+            return response()->json([
+                'message' => 'This document has already been signed.',
+                'reason' => 'signed',
+                'signed_pdf_url' => $signedPdf ? route('media.show', $signedPdf) : null,
+            ], 410);
+        }
+
+        if ($submission->expires_at !== null && now()->greaterThan($submission->expires_at)) {
+            return response()->json([
+                'message' => 'This signing link has expired.',
+                'reason' => 'expired',
+            ], 410);
         }
 
         if ($submission->viewed_at === null) {
@@ -55,8 +68,18 @@ class PublicSigningController extends Controller
             return response()->json(['message' => 'Submission not found.'], 404);
         }
 
-        if (in_array($submission->status, ['signed', 'processing']) || ($submission->expires_at !== null && now()->greaterThan($submission->expires_at))) {
-            return response()->json(['message' => 'This signing link has expired or already been completed.'], 410);
+        if (in_array($submission->status, ['signed', 'processing'])) {
+            return response()->json([
+                'message' => 'This document has already been signed.',
+                'reason' => 'signed',
+            ], 410);
+        }
+
+        if ($submission->expires_at !== null && now()->greaterThan($submission->expires_at)) {
+            return response()->json([
+                'message' => 'This signing link has expired.',
+                'reason' => 'expired',
+            ], 410);
         }
 
         $document = $submission->document;
@@ -117,9 +140,12 @@ class PublicSigningController extends Controller
 
         GenerateSignedPdfJob::dispatch($submission, $fieldValuesInput, $request->ip(), $request->userAgent());
 
+        $frontendUrl = rtrim(config('app.frontend_url', 'http://localhost:5173'), '/');
+
         return response()->json([
             'message' => 'Signing complete',
             'signed_pdf_url' => null,
+            'portal_url' => $frontendUrl.'/portal/'.$submission->token,
         ]);
     }
 }

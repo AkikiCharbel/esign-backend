@@ -30,5 +30,7 @@ class DatabaseSeeder extends Seeder
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->id);
         $user->assignRole('admin');
+
+        $this->call(TestDataSeeder::class);
     }
 }

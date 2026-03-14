@@ -2,6 +2,7 @@
 
 use App\Jobs\CreateSubmissionJob;
 use App\Jobs\SendSigningInvitationJob;
+use App\Jobs\SendSigningReminderJob;
 use App\Models\Document;
 use App\Models\Submission;
 use App\Models\Template;
@@ -143,7 +144,7 @@ it('show returns submission with document, field values, and audit logs', functi
 
 // ─── Resend ────────────────────────────────────────────────────────
 
-it('resend dispatches signing invitation job', function () {
+it('resend dispatches signing reminder job', function () {
     Queue::fake();
 
     $submission = Submission::factory()->create([
@@ -155,7 +156,7 @@ it('resend dispatches signing invitation job', function () {
 
     $response->assertStatus(204);
 
-    Queue::assertPushed(SendSigningInvitationJob::class);
+    Queue::assertPushed(SendSigningReminderJob::class);
 });
 
 it('resend rejects signed submission', function () {

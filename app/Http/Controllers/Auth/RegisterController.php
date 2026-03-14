@@ -27,6 +27,32 @@ class RegisterController extends Controller
         ], 201);
     }
 
+    public function showInvitation(string $token): JsonResponse
+    {
+        $invitation = WorkspaceInvitation::query()
+            ->withoutGlobalScope('tenant')
+            ->with('tenant', 'inviter')
+            ->where('token', $token)
+            ->first();
+
+        if (! $invitation) {
+            abort(404, 'Invitation not found.');
+        }
+
+        /** @var \App\Models\Tenant $tenant */
+        $tenant = $invitation->tenant;
+
+        return response()->json([
+            'workspace_name' => $tenant->name,
+            'invited_by_name' => $invitation->inviter->name ?? 'Unknown',
+            'email' => $invitation->email,
+            'role' => $invitation->role,
+            'expires_at' => $invitation->expires_at,
+            'is_expired' => $invitation->expires_at->isPast(),
+            'is_accepted' => $invitation->accepted_at !== null,
+        ]);
+    }
+
     public function acceptInvitation(AcceptInvitationRequest $request): JsonResponse
     {
         $invitation = WorkspaceInvitation::query()

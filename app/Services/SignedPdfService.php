@@ -12,6 +12,7 @@ class SignedPdfService
     /** @param  array<int, array{template_field_id: int, value: string|null}>  $fieldValues */
     public function generate(Submission $submission, array $fieldValues): string
     {
+
         $document = $submission->document;
         $template = $document?->template;
 
@@ -85,39 +86,94 @@ class SignedPdfService
 
     private function renderText(Fpdi $fpdi, string $value, float $x, float $y, float $w, float $h, ?int $fontSize): void
     {
-        $fpdi->SetFont('Helvetica', '', $fontSize ?? 12);
+        $size = $fontSize ?? 12;
+        $fpdi->SetFont('Helvetica', '', $size);
         $fpdi->SetXY($x, $y);
-        $fpdi->Cell($w, $h, $value, 0, 0);
+        $fpdi->MultiCell($w, $h, $value, 0, 'L', false, 1, $x, $y, true, 0, false, true, $h, 'T');
     }
 
     private function renderCheckbox(Fpdi $fpdi, string $value, float $x, float $y, float $w, float $h): void
     {
-        if ($value !== '1') {
+        if (! in_array($value, ['1', 'true', 'yes', 'on'], true)) {
             return;
         }
 
-        $fpdi->SetFont('ZapfDingbats', '', 12);
+        $fpdi->SetFont('ZapfDingbats', '', min($h * 2.5, 14));
         $fpdi->SetXY($x, $y);
-        $fpdi->Cell($w, $h, '4', 0, 0);
+        $fpdi->Cell($w, $h, '4', 0, 0, 'C');
     }
 
     private function renderImage(Fpdi $fpdi, string $value, float $x, float $y, float $w, float $h): void
     {
-        $imageData = base64_decode($value, true);
-        if ($imageData === false) {
+        // Strip data URI prefix (e.g. "data:image/png;base64,")
+        $base64 = $value;
+        if (str_contains($base64, ',')) {
+            $base64 = substr($base64, strpos($base64, ',') + 1);
+        }
+
+        $imageData = base64_decode($base64, true);
+        if ($imageData === false || $imageData === '') {
             return;
         }
 
         $info = @getimagesizefromstring($imageData);
-        if ($info === false || ! in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG])) {
+        if ($info === false) {
             return;
         }
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'sig_').'.png';
-        file_put_contents($tempFile, $imageData);
+        if (! in_array($info[2], [IMAGETYPE_PNG, IMAGETYPE_JPEG])) {
+            return;
+        }
 
-        $fpdi->Image($tempFile, $x, $y, $w, $h, 'PNG');
+        // Flatten transparency onto white background so TCPDF renders it correctly
+        $imageData = $this->flattenTransparency($imageData, $info);
 
-        @unlink($tempFile);
+        // Use TCPDF's '@' prefix to pass raw image data directly (no temp file needed)
+        $fpdi->Image('@'.$imageData, $x, $y, $w, $h, 'PNG');
     }
+
+    /**
+     * Flatten a PNG's alpha channel onto a white background.
+     *
+     * @param  array{0: int, 1: int, 2: int}  $info
+     */
+    private function flattenTransparency(string $imageData, array $info): string
+    {
+        if ($info[2] !== IMAGETYPE_PNG) {
+            return $imageData;
+        }
+
+        $src = @imagecreatefromstring($imageData);
+        if ($src === false) {
+            return $imageData;
+        }
+
+        $w = imagesx($src);
+        $h = imagesy($src);
+
+        $dst = imagecreatetruecolor($w, $h);
+        if ($dst === false) {
+            imagedestroy($src);
+
+            return $imageData;
+        }
+
+        // Fill with white
+        $white = (int) imagecolorallocate($dst, 255, 255, 255);
+        imagefill($dst, 0, 0, $white);
+
+        // Composite the source (with alpha) onto the white background
+        imagealphablending($dst, true);
+        imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
+
+        ob_start();
+        imagepng($dst);
+        $result = ob_get_clean();
+
+        imagedestroy($src);
+        imagedestroy($dst);
+
+        return $result !== false ? $result : $imageData;
+    }
+
 }

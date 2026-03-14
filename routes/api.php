@@ -36,6 +36,7 @@ Route::delete('/public/esign/{token}/attachments/{mediaId}', [PublicAttachmentCo
 Route::get('/media/{media}', [MediaController::class, 'show'])->name('media.show');
 
 Route::post('/auth/register', [RegisterController::class, 'registerTenant'])->name('auth.register');
+Route::get('/auth/invitation/{token}', [RegisterController::class, 'showInvitation'])->name('auth.invitation.show');
 Route::post('/auth/accept-invitation', [RegisterController::class, 'acceptInvitation'])->name('auth.accept-invitation');
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
 
